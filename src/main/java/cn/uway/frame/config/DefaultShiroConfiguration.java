@@ -24,7 +24,7 @@ public class DefaultShiroConfiguration {
         shiroFilterFactoryBean.setSecurityManager(securityManager);
         shiroFilterFactoryBean.setLoginUrl("/login.html");
         shiroFilterFactoryBean.setUnauthorizedUrl("/err/403.html");
-        shiroFilterFactoryBean.setSuccessUrl("/index/html");
+        shiroFilterFactoryBean.setSuccessUrl("/index.html");
         Map<String,String> filterChainDefinitionMap = new HashMap<>();
 
         filterChainDefinitionMap.put("/**", "authc");

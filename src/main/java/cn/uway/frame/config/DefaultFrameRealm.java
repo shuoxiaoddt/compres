@@ -1,17 +1,23 @@
 package cn.uway.frame.config;
 
-import org.apache.shiro.authc.AuthenticationException;
-import org.apache.shiro.authc.AuthenticationInfo;
-import org.apache.shiro.authc.AuthenticationToken;
-import org.apache.shiro.authc.SimpleAuthenticationInfo;
+import cn.uway.frame.dao.UserInfoDao;
+import cn.uway.frame.entity.UserInfo;
+import org.apache.shiro.authc.*;
+import org.apache.shiro.authc.credential.CredentialsMatcher;
+import org.apache.shiro.authc.credential.HashedCredentialsMatcher;
 import org.apache.shiro.authz.AuthorizationInfo;
 import org.apache.shiro.realm.AuthorizingRealm;
 import org.apache.shiro.subject.PrincipalCollection;
+import org.apache.shiro.util.ByteSource;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Created by uwayxs on 2017/11/16.
  */
 public class DefaultFrameRealm extends AuthorizingRealm {
+
+    @Autowired
+    private UserInfoDao userInfoDao;
 
     /**
      * 身份验证
@@ -22,13 +28,18 @@ public class DefaultFrameRealm extends AuthorizingRealm {
     @Override
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
 
-        Object principal = token.getPrincipal(); //username
-        Object credentials = token.getCredentials();//password
 
-        if ("admin".equals(principal) && "123456".equals(credentials)){
-            return new SimpleAuthenticationInfo(principal,credentials,getName());
+        String username = (String)token.getPrincipal(); //username
+        UserInfo userInfo = userInfoDao.findByUsername(username);
+
+        if(userInfo.getState() != 0){
+            throw new LockedAccountException("user [" + userInfo.getName() + "] is locked.");
         }
-        return null;
+        SimpleAuthenticationInfo simpleAuthenticationInfo =
+                new SimpleAuthenticationInfo(userInfo,userInfo.getPasspwd(),
+                        ByteSource.Util.bytes(userInfo.getCredentialsSalt()),getName());
+
+        return simpleAuthenticationInfo;
     }
 
     /**
@@ -38,6 +49,19 @@ public class DefaultFrameRealm extends AuthorizingRealm {
      */
     @Override
     protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
+
         return null;
     }
+
+    @Override
+    public void setCredentialsMatcher(CredentialsMatcher credentialsMatcher) {
+        HashedCredentialsMatcher hashedCredentialsMatcher = new HashedCredentialsMatcher();
+        hashedCredentialsMatcher.setHashAlgorithmName("SHA-512");
+        hashedCredentialsMatcher.setHashIterations(1024);
+        hashedCredentialsMatcher.setStoredCredentialsHexEncoded(false);
+        super.setCredentialsMatcher(hashedCredentialsMatcher);
+    }
+
+
+
 }
